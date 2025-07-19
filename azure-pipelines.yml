@@ -1,55 +1,70 @@
 trigger:
- branches:
-   include:
-     - main
-
+  branches:
+    include:
+      - main
 resources:
- repositories:
-   - repository: self
-     type: github
-     endpoint: gopalepic
-     name: gopalepic/event-driven-pipeline
+  repositories:
+    - repository: self
+      type: github
+      endpoint: gopalepic
+      name: gopalepic/Event-driven-pipeline
 
 stages:
-  - stage: BuildAndDeployFunction
-    jobs:
-      - job: BuildFunction
-        pool:
-          vmImage: 'ubuntu-latest'
-        steps:
-          - task: NodeTool@0
-            inputs:
-              versionSpec: '18.x'
-            displayName: 'Install Node.js'
-          - script: |
-              npm install
-              npm run build 
-            workingDirectory: 'process_data'
-            displayName: 'Build Fucntion App'
-          - task: ArchiveFiles@2
-            inputs:
-              rootFolderOrFile: 'process_data'
-              includeRootFolder: false
-              archiveType: zip
-              archiveFile: '$(Build.ArtifactStagingDirectory)/function-app.zip'
-              replaceExistingArchive: true
-            displayName: 'Archive Function App'
-          - task: PublishBuildArtifacts@1
-            inputs:
-              PathtoPublish: '$(Build.ArtifactStagingDirectory)'
-              ArtifactName: 'function-app'
-              publishLocation: Container
-            displayName: 'Publish Function App Artifact'
-        
-      - job: DeployFuncion
-        dependsOn: BuildFunction
-        pool:
-         vmImage: 'ubuntu-latest'
-        steps:
-          - task: AzureFunctionApp@2
-            inputs:
-             azureSubscription:''
-             appType: 'functionApp'
-
-
-          
+- stage: BuildAndDeployFunction
+  jobs:
+  - job: BuildFunction
+    pool:
+      vmImage: 'ubuntu-latest'
+    steps:
+    - task: NodeTool@0
+      inputs:
+        versionSpec: '18.x'
+      displayName: 'Install Node.js'
+    - script: |
+        npm install
+        npm run build
+      workingDirectory: 'process_data'
+      displayName: 'Build Function App'
+    - task: ArchiveFiles@2
+      inputs:
+        rootFolderOrFile: 'process_data'
+        includeRootFolder: false
+        archiveType: 'zip'
+        archiveFile: '$(Build.ArtifactStagingDirectory)/function-app.zip'
+        replaceExistingArchive: true
+      displayName: 'Archive Function App'
+    - task: PublishBuildArtifacts@1
+      inputs:
+        pathToPublish: '$(Build.ArtifactStagingDirectory)'
+        artifactName: 'function-app'
+        publishLocation: 'Container'
+      displayName: 'Publish Function App Artifact'
+  - job: DeployFunction
+    dependsOn: BuildFunction
+    pool:
+      vmImage: 'ubuntu-latest'
+    steps:
+    - task: AzureFunctionApp@2
+      inputs:
+        azureSubscription: 'Azure for Studentes'
+        appType: 'functionApp'
+        appName: 'process-data-dxjhc2i0'
+        package: '$(Build.ArtifactStagingDirectory)/function-app.zip'
+        deploymentMethod: 'zipDeploy'
+      displayName: 'Deploy Function App'
+- stage: DeployADF
+  jobs:
+  - job: DeployDataFactory
+    pool:
+      vmImage: 'ubuntu-latest'
+    steps:
+    - task: AzurePowerShell@5
+      inputs:
+        azureSubscription: 'Azure for Studentes'
+        ScriptType: 'InlineScript'
+        Inline: |
+          $adfName = "pipeline-adf-dxjhc2i0"
+          $resourceGroup = "event-pipeline-rg" 
+          $adfJsonPath = "adf"
+          az datafactory pipeline create --resource-group $resourceGroup --factory-name $adfName --pipeline-name DailyReportPipeline --pipeline @./$adfJsonPath/DailyReportPipeline.json
+      displayName: 'Deploy ADF Pipeline'
