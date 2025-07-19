@@ -39,19 +39,31 @@ stages:
         artifactName: 'function-app'
         publishLocation: 'Container'
       displayName: 'Publish Function App Artifact'
+  
   - job: DeployFunction
     dependsOn: BuildFunction
     pool:
       vmImage: 'ubuntu-latest'
     steps:
+    # ADD THIS STEP - Download the artifact created in BuildFunction job
+    - task: DownloadBuildArtifacts@1
+      inputs:
+        buildType: 'current'
+        downloadType: 'specific'
+        artifactName: 'function-app'
+        downloadPath: '$(System.ArtifactsDirectory)'
+      displayName: 'Download Function App Artifact'
+    
     - task: AzureFunctionApp@2
       inputs:
         azureSubscription: 'Azure for Studentes'
         appType: 'functionApp'
         appName: 'process-data-dxjhc2i0'
-        package: '$(Build.ArtifactStagingDirectory)/function-app.zip'
+        # UPDATE PATH - Use downloaded artifact location
+        package: '$(System.ArtifactsDirectory)/function-app/function-app.zip'
         deploymentMethod: 'zipDeploy'
       displayName: 'Deploy Function App'
+
 - stage: DeployADF
   jobs:
   - job: DeployDataFactory
