@@ -12,3 +12,6 @@ testBlob.js
 terraform.tfvars
 *.tfplan
 
+.github.*
+# Ignore all files in the .github directory
+
