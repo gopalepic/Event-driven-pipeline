@@ -12,3 +12,6 @@ testBlob.js
 terraform.tfvars
 *.tfplan
 
+azure-pipelines.yml
+azure-pipelines-*.yml
+
